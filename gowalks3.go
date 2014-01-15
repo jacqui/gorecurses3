@@ -1,5 +1,9 @@
 package main
 
+// USAGE
+//
+// go gowalks3 -b name.of.my.bucket.com -p path/to/prefix
+//
 import (
 	"flag"
 	"fmt"
