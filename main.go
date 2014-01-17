@@ -1,4 +1,4 @@
-package gowalks3
+package main
 
 // USAGE
 //
@@ -6,13 +6,11 @@ package gowalks3
 //
 import (
 	"flag"
-	"github.com/jacqui/gowalks3"
-	"launchpad.net/goamz/aws"
-	"launchpad.net/goamz/s3"
+	"github.com/jacqui/gorecurses3/s3walker"
 	"log"
 )
 
-var accessKey, secretAccessKey string
+var bucketName, prefix, marker, accessKey, secretAccessKey string
 
 func init() {
 	flag.StringVar(&bucketName, "b", "", "bucket to list")
@@ -24,6 +22,6 @@ func init() {
 func main() {
 	flag.Parse()
 	log.Println("About to recursively list", bucketName, "at", prefix)
-	items := gowalks3.BucketFiles(accessKey, secretAccessKey, bucketName, prefix, marker)
+	items := s3walker.ListFiles(accessKey, secretAccessKey, bucketName, prefix, marker)
 	log.Println("Found", len(items), "files")
 }
