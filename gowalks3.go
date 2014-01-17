@@ -1,35 +1,42 @@
-package main
+package gowalks3
 
 // USAGE
 //
-// go gowalks3 -b name.of.my.bucket.com -p path/to/prefix
+// go gowalks3 -b name.of.my.bucket.com -p path/to/prefix -a ACCESS_KEY_ID -s SECRET_ACCESS_KEY
 //
 import (
 	"flag"
-	"fmt"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
 	"log"
 )
 
-var bucketName, prefix, marker string
+var bucketName, prefix, marker, accessKey, secretAccessKey string
 var items = []string{}
-var folders = []string{}
 
-// AWS_ACCESS_KEY, AWS_SECRET_ACCESS_KEY env vars
-var auth, err = aws.EnvAuth()
+func authS3(accessKey, secretKey string) *s3.S3 {
+	var auth aws.Auth
+	var err error
+	if accessKey == "" && secretKey == "" {
+		auth, err = aws.EnvAuth()
+		if err != nil {
+			log.Println(err.Error())
+			panic(err.Error())
+		}
 
-// new s3 connection + bucket obj
-var s = s3.New(auth, aws.USEast)
-
-func init() {
-	flag.StringVar(&bucketName, "b", "", "bucket to list")
-	flag.StringVar(&prefix, "p", "", "prefix")
+	} else {
+		auth = aws.Auth{accessKey, secretAccessKey}
+	}
+	return s3.New(auth, aws.USEast)
 }
 
-func bucketList(name, prefix string, marker string) {
-	log.Println("listing bucket at prefix", prefix)
-	log.Println("items has ", len(items), " keys")
+func BucketFiles(accessKey, secretKey, name, prefix, marker string) []string {
+	var s3Conn = authS3(accessKey, secretKey)
+	listBucket(s3Conn, name, prefix, marker)
+	return items
+}
+
+func listBucket(s *s3.S3, name, prefix, marker string) {
 	bucket := s.Bucket(name)
 
 	// list out bucket contents
@@ -41,33 +48,37 @@ func bucketList(name, prefix string, marker string) {
 
 	// append any files to items
 	if len(list.Contents) > 0 {
-		log.Println("found", len(list.Contents), "files in prefix ", prefix)
-
 		for _, k := range list.Contents {
 			items = append(items, k.Key)
 		}
 
+		log.Println("items is", len(items))
 		if list.IsTruncated {
 			last := items[len(items)-1]
-			bucketList(name, prefix, last)
+			listBucket(s, name, prefix, last)
 		}
 	}
 
 	// recurse over each folder
 	if len(list.CommonPrefixes) > 0 {
-		log.Println("found", len(list.CommonPrefixes), "folders in prefix ", prefix)
-
 		for _, p := range list.CommonPrefixes {
-			log.Println(p)
-			bucketList(name, p, "")
+			listBucket(s, name, p, "")
 		}
 	} else {
-		log.Println("no more subfolders in ", prefix)
 		return
 	}
 }
 
+func init() {
+	flag.StringVar(&bucketName, "b", "", "bucket to list")
+	flag.StringVar(&prefix, "p", "", "prefix")
+	flag.StringVar(&accessKey, "a", "", "aws access key id")
+	flag.StringVar(&secretAccessKey, "s", "", "aws secret access key")
+}
+
 func main() {
 	flag.Parse()
-	bucketList(bucketName, prefix, marker)
+	log.Println("About to recursively list", bucketName, "at", prefix)
+	items := BucketFiles(accessKey, secretAccessKey, bucketName, prefix, marker)
+	log.Println("Found", len(items), "files")
 }
