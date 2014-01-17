@@ -39,7 +39,7 @@ func bucketWalker(s *s3.S3, name, prefix, marker string) {
 	bucket := s.Bucket(name)
 
 	// list out bucket contents
-	list, err := bucket.List(prefix, "/", marker, 2000)
+	list, err := bucket.List(prefix, "/", marker, 1000)
 	if err != nil {
 		log.Println(err.Error())
 		panic(err.Error())
