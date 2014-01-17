@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"github.com/jacqui/gorecurses3/s3walker"
+	"launchpad.net/goamz/aws"
 	"log"
 )
 
@@ -22,6 +23,7 @@ func init() {
 func main() {
 	flag.Parse()
 	log.Println("About to recursively list", bucketName, "at", prefix)
-	items := s3walker.ListFiles(accessKey, secretAccessKey, bucketName, prefix, marker)
+	auth := aws.Auth{accessKey, secretAccessKey}
+	items := s3walker.ListFiles(auth, bucketName, prefix, marker)
 	log.Println("Found", len(items), "files")
 }

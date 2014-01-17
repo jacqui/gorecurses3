@@ -11,26 +11,23 @@ import (
 )
 
 var bucketName, prefix, marker, accessKey, secretAccessKey string
-var items = []string{}
 
-func authS3(accessKey, secretKey string) *s3.S3 {
-	var auth aws.Auth
+func authS3(auth aws.Auth) *s3.S3 {
 	var err error
-	if accessKey == "" && secretKey == "" {
+	if auth.AccessKey == "" && auth.SecretKey == "" {
 		auth, err = aws.EnvAuth()
 		if err != nil {
 			log.Println(err.Error())
 			panic(err.Error())
 		}
-
-	} else {
-		auth = aws.Auth{accessKey, secretAccessKey}
 	}
 	return s3.New(auth, aws.USEast)
 }
 
-func ListFiles(accessKey, secretKey, name, prefix, marker string) []string {
-	var s3Conn = authS3(accessKey, secretKey)
+var items = []s3.Key{}
+
+func ListFiles(auth aws.Auth, name, prefix, marker string) []s3.Key {
+	var s3Conn = authS3(auth)
 	bucketWalker(s3Conn, name, prefix, marker)
 	return items
 }
@@ -42,18 +39,18 @@ func bucketWalker(s *s3.S3, name, prefix, marker string) {
 	list, err := bucket.List(prefix, "/", marker, 1000)
 	if err != nil {
 		log.Println(err.Error())
-		panic(err.Error())
+		return
 	}
 
 	// append any files to items
 	if len(list.Contents) > 0 {
 		for _, k := range list.Contents {
-			items = append(items, k.Key)
+			items = append(items, k)
 		}
 
 		if list.IsTruncated {
 			last := items[len(items)-1]
-			bucketWalker(s, name, prefix, last)
+			bucketWalker(s, name, prefix, last.Key)
 		}
 	}
 
